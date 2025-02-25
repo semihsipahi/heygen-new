@@ -21,6 +21,9 @@ class ApiService {
       },
     });
 
+    this.baseURLs = baseURLs;
+    this.namespace = namespace;
+
     this.initializeHeaders();
   }
 
@@ -49,7 +52,12 @@ class ApiService {
 
   async request(method, endpoint, { data = {}, params = {} } = {}) {
     try {
-      const response = await this.api({ method, url: endpoint, data, params });
+      const response = await this.api({
+        method,
+        url: this.baseURLs[this.namespace] + endpoint,
+        data,
+        params,
+      });
       return response.data;
     } catch (error) {
       this.handleError(error);

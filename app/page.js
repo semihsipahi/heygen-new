@@ -12,21 +12,28 @@ import 'react-toastify/dist/ReactToastify.css';
 import AudioRecorder from './components/audio/transaction/audioRecorder';
 import WebcamCapture from './components/webcam/webcamCapture';
 import { READY_STATE } from './lib/constants';
-import ApiService from './lib/http/axiosHelper';
+import { DifyFlows } from './lib/dify/difyClient';
 import { extractTagContent } from './lib/utils/pureString';
 import { showToast } from './lib/utils/pureToast';
+import { fetchToken } from './service/heygenService';
+import { createLog } from './service/meetingLogService';
+import { fetchMeetingQuestionByMeetingInvintationId } from './service/meetingQuestionService';
+import { createMeetingRecord } from './service/meetingRecordService';
+import { fetchMeetingByMeetingInvintationId } from './service/meetingService';
 
-const api = new ApiService('Meet');
+const difyInstance = new DifyFlows('/api/dify/');
 
 export default function Home() {
   const avatar = useRef(null);
+  const micRef = useRef(null);
   const mediaStream = useRef(null);
 
   const [step, setStep] = useState(0);
-  const [answers, setAnswer] = useState();
   const [heygenToken, setHeygenToken] = useState(null);
   const [stream, setStream] = useState(null);
   const [meet, setMeet] = useState();
+  const [question, setQuestion] = useState();
+  const [startVideoRecord, setStartVideoRecord] = useState();
 
   useEffect(() => {
     fetchToken()
@@ -37,15 +44,18 @@ export default function Home() {
         }
       })
       .catch((err) => console.error('Token Received Error:', err));
-    fetchMeetingByMeetingInvintationId();
+
+    fetchMeetingByMeetingInvintationId().then((response) => {
+      if (!response) {
+        return;
+      }
+      setMeet(response);
+    });
   }, []);
 
   useEffect(() => {
     if (heygenToken === null) return;
-
-    (async () => {
-      //await startSession();
-    })();
+    startSession();
   }, [heygenToken]);
 
   useEffect(() => {
@@ -57,33 +67,44 @@ export default function Home() {
     }
   }, [mediaStream, stream]);
 
-  const fetchToken = async () => {
-    const response = await fetch('/api/get-access-token', {
-      method: 'POST',
-    });
-    return await response.text();
-  };
-
   const startSession = async () => {
     try {
       avatar.current = new StreamingAvatar({ token: heygenToken });
 
+      avatar.current.on(StreamingEvents.STREAM_READY, (event) => {
+        setStream(event.detail);
+      });
+
       avatar.current.on(StreamingEvents.AVATAR_START_TALKING, (e) => {
-        // console.log('Avatar started talking', e);
+        if (micRef) {
+          const textSpan = micRef.current.querySelector('.btn-text');
+
+          if (textSpan) {
+            textSpan.textContent = 'Lütfen Bekleyiniz';
+          }
+
+          micRef.current.disabled = true;
+          micRef.current.style.backgroundColor = 'gray';
+          micRef.current.style.cursor = 'not-allowed';
+        }
       });
 
       avatar.current.on(StreamingEvents.AVATAR_STOP_TALKING, (e) => {
-        // console.log('Avatar stopped talking', e);
+        if (micRef) {
+          const textSpan = micRef.current.querySelector('.btn-text');
+
+          if (textSpan) {
+            textSpan.textContent = 'Konuşmaya Başla';
+          }
+
+          micRef.current.disabled = false;
+          micRef.current.style.backgroundColor = 'green';
+          micRef.current.style.cursor = 'pointer';
+        }
       });
 
       avatar.current.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-        // console.log('Stream disconnected');
         endSession();
-      });
-
-      avatar.current.on(StreamingEvents.STREAM_READY, (event) => {
-        // console.log('>>>>> Stream ready:', event.detail);
-        setStream(event.detail);
       });
 
       await avatar.current.createStartAvatar({
@@ -91,11 +112,12 @@ export default function Home() {
         avatarName: 'June_HR_public',
         knowledgeId: '',
         voice: {
-          rate: 0.5, // 0.5 ~ 1.5
+          rate: 0.9, // 0.5 ~ 1.5
           emotion: VoiceEmotion.EXCITED,
+          speed: 0.6,
         },
         language: 'tr',
-        disableIdleTimeout: false,
+        disableIdleTimeout: true,
       });
 
       // Welcoming
@@ -116,96 +138,169 @@ export default function Home() {
 
   const onStart = () => {
     showToast('Ses Algılama Devrede');
+
+    // Video Recorder Start.
+    if (step !== 0) {
+      setStartVideoRecord(true);
+    }
   };
 
   const onStop = async (filteredData) => {
     showToast('Ses Algılama Devre Dışı');
+    setStartVideoRecord(false);
 
-    console.log('Filtered Speech To Text Data :', filteredData);
-    setAnswer(filteredData);
+    if (step === 0) {
+      const response = await difyInstance.candidatePreparation({
+        user_input: filteredData,
+        user_information: 'Semih Sipahi',
+      });
 
-    const response = await candidatePreparation(filteredData);
+      const readyState = extractTagContent(
+        response?.data?.outputs?.output,
+        'ready_state'
+      );
 
-    const readyState = extractTagContent(
-      response?.data?.outputs?.output,
-      'ready_state'
+      const whenQuestion = extractTagContent(
+        response?.data?.outputs?.output,
+        'when_question'
+      );
+
+      if (readyState === READY_STATE.NOT) {
+        const speak = await avatar.current.speak({
+          text: whenQuestion,
+          taskType: TaskType.REPEAT,
+          taskMode: TaskMode.SYNC,
+        });
+
+        setTimeout(() => {
+          endSession();
+        }, speak?.duration_ms);
+
+        return;
+      }
+
+      //TODO : DIFY
+      const readyCase = await avatar.current.speak({
+        text: 'Harika ... O Halde mülakata başlıyoruz , sorularınızı güncelliyorum...',
+        taskType: TaskType.REPEAT,
+        taskMode: TaskMode.SYNC,
+      });
+
+      setTimeout(async () => {
+        await handleNextQuestion();
+      }, readyCase?.duration_ms + 2);
+
+      return;
+    }
+
+    //CreateLog.
+    await createLog({
+      value: filteredData?.text,
+      questionId: question?.id,
+      isChatbot: false,
+    });
+
+    const summaryResponse = await difyInstance.answerSummary({
+      answer: filteredData,
+    });
+
+    if (!summaryResponse) {
+      return;
+    }
+
+    const summaryCase = extractTagContent(
+      summaryResponse?.data?.outputs?.text,
+      'summary'
     );
 
-    const whenQuestion = extractTagContent(
-      response?.data?.outputs?.output,
-      'when_question'
-    );
+    const summarySpeak = await avatar.current.speak({
+      text: summaryCase,
+      taskType: TaskType.REPEAT,
+      taskMode: TaskMode.SYNC,
+    });
 
-    if (readyState === READY_STATE.NOT) {
-      const speak = await avatar.current.speak({
-        text: whenQuestion,
+    //CreateLog.
+    await createLog({
+      value: summaryCase,
+      questionId: question?.id,
+      isChatbot: true,
+    });
+
+    setTimeout(async () => {
+      const payload = {
+        answer: filteredData?.text,
+        questionId: question?.id,
+        isQuestionPassed: false,
+      };
+
+      //Create Record.
+      await createMeetingRecord(payload);
+
+      const temp_answers = [
+        'Soruya verdiğiniz Cevabınızı algıladım , teşekkürler , bir sonraki soruya geçiyorum',
+        'Bu soruya verdiğiniz cevap için teşekkürler , bu vermiş olduğunuz cevabı kayıt ediyor ve bir sonraki soruya geçiyorum',
+        '...Bu cevabı sevdim, teşekkürler , bir sonraki soruya geçiyorum',
+      ];
+
+      const randomIndex = Math.floor(Math.random() * temp_answers.length);
+
+      const answerCase = await avatar.current.speak({
+        text: temp_answers[randomIndex],
         taskType: TaskType.REPEAT,
         taskMode: TaskMode.SYNC,
       });
 
       setTimeout(() => {
-        //Kapatma yerine başka birşey dusun.
-      }, speak?.duration_ms);
+        handleNextQuestion();
+      }, answerCase.duration_ms + 3);
+    }, summarySpeak?.duration_ms);
+  };
+
+  const handleNextQuestion = async () => {
+    const response = await fetchMeetingQuestionByMeetingInvintationId();
+
+    if (!response) {
       return;
     }
 
-    const readyCase = await avatar.current.speak({
-      text: whenQuestion,
+    if (!response?.status) {
+      //CreateLog.
+      await createLog({
+        value: 'Görüşme Tamamlandı',
+        questionId: response?.data?.id,
+        isChatbot: true,
+      });
+
+      const lastQuestionCase = await avatar.current.speak({
+        text: 'Cevaplarınızın tamamını kayıt ettim , mülakatınız tamamlandı , teşekkür ederiz , görüşme ekranını kapatıyorum.',
+        taskType: TaskType.REPEAT,
+        taskMode: TaskMode.SYNC,
+      });
+
+      setTimeout(() => {
+        endSession();
+      }, lastQuestionCase?.duration_ms);
+
+      return;
+    }
+
+    setQuestion(response?.data);
+
+    //CreateLog.
+    await createLog({
+      value: response?.data?.title,
+      questionId: response?.data?.id,
+      isChatbot: true,
+    });
+
+    await avatar.current.speak({
+      text: response?.data?.title,
       taskType: TaskType.REPEAT,
       taskMode: TaskMode.SYNC,
     });
 
-    setTimeout(async () => {
-      await handleNextQuestion();
-    }, readyCase?.duration_ms);
-  };
-
-  const handleNextQuestion = async () => {
     setStep(step + 1);
   };
-
-  const candidatePreparation = async (userMessage) => {
-    const response = await fetch('/api/dify/candidate_preparation', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_input: userMessage,
-        user_information: 'Hakan',
-      }),
-    });
-    return await response.json();
-  };
-
-  async function fetchMeetingByMeetingInvintationId() {
-    const meetinginvintationid = 'd6c15979-0ef3-43c4-966b-0eb114cbe356';
-    try {
-      const response = await api.get(
-        `http://localhost:5081/api/Meeting/GetMeetingByMeetingInvintationId`,
-        {
-          meetinginvintationid,
-        }
-      );
-      setMeet(response?.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  }
-
-  async function fetchMeetingQuestionByMeetingInvintationId() {
-    const meetinginvintationid = 'd6c15979-0ef3-43c4-966b-0eb114cbe356';
-    try {
-      const data = await api.get(
-        `http://localhost:5081/api/MeetingQuestion/GetMeetingQuestionByMeetingInvintationId`,
-        {
-          meetinginvintationid,
-        }
-      );
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  }
 
   return (
     <div>
@@ -216,7 +311,7 @@ export default function Home() {
           marginTop: 10,
         }}
       >
-        <WebcamCapture />
+        <WebcamCapture startRecording={startVideoRecord} />
       </div>
 
       {stream && (
@@ -228,8 +323,7 @@ export default function Home() {
               justifyContent: 'center',
               alignItems: 'center',
               borderRadius: '0.5rem',
-              height: '500px',
-              width: '900px',
+              width: '1120px',
               border: '1px solid white',
               margin: '0 auto',
               marginTop: '30px',
@@ -250,6 +344,7 @@ export default function Home() {
             style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}
           >
             <AudioRecorder
+              ref={micRef}
               onStart={() => onStart()}
               onStop={(filteredData) => onStop(filteredData)}
             />
