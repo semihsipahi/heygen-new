@@ -7,11 +7,13 @@ import StreamingAvatar, {
   TaskType,
   VoiceEmotion,
 } from '@heygen/streaming-avatar';
+import { Box } from '@mui/material';
+import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import 'react-toastify/dist/ReactToastify.css';
 import AudioRecorder from './components/audio/transaction/audioRecorder';
 import WebcamCapture from './components/webcam/webcamCapture';
-import { READY_STATE } from './lib/constants';
+import { EMBED_INTRO_STEPS, READY_STATE } from './lib/constants';
 import { DifyFlows } from './lib/dify/difyClient';
 import { extractTagContent } from './lib/utils/pureString';
 import { showToast } from './lib/utils/pureToast';
@@ -34,6 +36,10 @@ export default function Home() {
   const [meet, setMeet] = useState();
   const [question, setQuestion] = useState();
   const [startVideoRecord, setStartVideoRecord] = useState();
+  const [stopVideoRecord, setStopVideoRecord] = useState();
+
+  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.MEET);
+  const [slideIndex, setSlideIndex] = useState(0);
 
   useEffect(() => {
     fetchToken()
@@ -55,7 +61,7 @@ export default function Home() {
 
   useEffect(() => {
     if (heygenToken === null) return;
-    startSession();
+    //startSession();
   }, [heygenToken]);
 
   useEffect(() => {
@@ -142,12 +148,14 @@ export default function Home() {
     // Video Recorder Start.
     if (step !== 0) {
       setStartVideoRecord(true);
+      setStopVideoRecord(false);
     }
   };
 
   const onStop = async (filteredData) => {
     showToast('Ses Algılama Devre Dışı');
     setStartVideoRecord(false);
+    setStopVideoRecord(true);
 
     if (step === 0) {
       const response = await difyInstance.candidatePreparation({
@@ -303,54 +311,191 @@ export default function Home() {
   };
 
   return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 10,
-        }}
-      >
-        <WebcamCapture startRecording={startVideoRecord} />
-      </div>
+    <>
+      {introStep === EMBED_INTRO_STEPS.INITIALIZE && (
+        <div className="container">
+          {/* <!-- SOL SÜTUN --> */}
+          <div className="left-column">
+            <Box
+              sx={{
+                display: 'flex',
+                width: '100%',
+                height: '100%',
+                flexDirection: 'column',
+                backgroundImage: `url(/images/avatars/swiper/swiper_background_${slideIndex}.jpg)`,
+                backgroundSize: 'cover',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center center',
+                borderBottomLeftRadius: 0,
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+              }}
+            >
+              <Box sx={{ display: 'flex', width: 72, height: 36 }}>
+                <Image
+                  src="/small/topRight.png"
+                  width="36"
+                  height="36"
+                  alt=""
+                />
+                <Box
+                  sx={{ width: 36, height: 36, backgroundColor: 'white' }}
+                ></Box>
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flex: 1,
+                  flexDirection: 'row',
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                <Box
+                  sx={{
+                    flex: 1,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* <ChatbotSwiper
+                    onSlideChange={(slideIndex) => setSlideIndex(slideIndex)}
+                  /> */}
+                </Box>
+                <Box sx={{ width: 36, backgroundColor: 'white' }}></Box>
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  width: 36,
+                  height: 36,
+                  backgroundImage: 'url(/small/rightBottom.png)',
+                }}
+              ></Box>
+            </Box>
+          </div>
 
-      {stream && (
-        <>
+          {/* <!-- SAĞ SÜTUN --> */}
+          <div className="right-column">
+            <h2>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h2>
+            {/* <!-- Adım Başlıkları --> */}
+            <div className="steps">
+              <div className="step active">Görüntü & Ses</div>
+              <div className="step">İzinler</div>
+              <div className="step">İsim</div>
+              <div className="step">Özet</div>
+            </div>
+
+            {/* <!-- Kamera & Mikrofon Testi --> */}
+            <div className="test-section-title">Kamera & Mikrofon Testi</div>
+
+            <div className="form-group">
+              <label htmlFor="micSelect">Ses Kayıt Cihazı</label>
+              <select id="micSelect">
+                <option>Default - Mikrofon (Realtek(R))</option>
+                <option>Mikrofon 1</option>
+                <option>Mikrofon 2</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="camSelect">Görüntü Kayıt Cihazı</label>
+              <select id="camSelect">
+                <option>USB webcam (0408:2094)</option>
+                <option>Kamera 1</option>
+                <option>Kamera 2</option>
+              </select>
+            </div>
+
+            {/* <!-- Onay Butonu --> */}
+            <button className="confirm-button">
+              Sesinizi ve görüntünüzü onayladı, devam edebilirsiniz
+            </button>
+          </div>
+        </div>
+      )}
+
+      {introStep === EMBED_INTRO_STEPS.WEBCAM_AND_MIC && (
+        <Box sx={{ position: 'relative', minHeight: '100%' }}>
+          <Box
+            sx={{
+              minHeight: '100%',
+              position: 'absolute',
+              minWidth: '100%',
+              paddingBottom: '86px',
+              display: 'flex',
+              justifyContent: 'center',
+              flexDirection: 'row',
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <WebcamCapture startRecording={startVideoRecord} />
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {introStep === EMBED_INTRO_STEPS.MEET && (
+        <div>
           <div
             style={{
               display: 'flex',
-              overflow: 'hidden',
               justifyContent: 'center',
-              alignItems: 'center',
-              borderRadius: '0.5rem',
-              width: '1120px',
-              border: '1px solid white',
-              margin: '0 auto',
-              marginTop: '30px',
+              marginTop: 10,
             }}
           >
-            <video
-              ref={mediaStream}
-              autoPlay
-              playsInline
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-              }}
-            ></video>
-          </div>
-          <div
-            style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}
-          >
-            <AudioRecorder
-              ref={micRef}
-              onStart={() => onStart()}
-              onStop={(filteredData) => onStop(filteredData)}
+            <WebcamCapture
+              question={question}
+              stopRecording={stopVideoRecord}
+              startRecording={startVideoRecord}
             />
           </div>
-        </>
+
+          {stream && (
+            <>
+              <div
+                style={{
+                  display: 'flex',
+                  overflow: 'hidden',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderRadius: '0.5rem',
+                  width: '1120px',
+                  border: '1px solid white',
+                  margin: '0 auto',
+                  marginTop: '30px',
+                }}
+              >
+                <video
+                  ref={mediaStream}
+                  autoPlay
+                  playsInline
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'contain',
+                  }}
+                ></video>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  marginTop: 20,
+                }}
+              >
+                <AudioRecorder
+                  ref={micRef}
+                  onStart={() => onStart()}
+                  onStop={(filteredData) => onStop(filteredData)}
+                />
+              </div>
+            </>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }

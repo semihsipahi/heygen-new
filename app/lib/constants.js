@@ -26,4 +26,12 @@ export const READY_STATE = {
   NOT: 'NOT',
 };
 
+export const EMBED_INTRO_STEPS = {
+  INITIALIZE: 'INITIALIZE',
+  WEBCAM_AND_MIC: 'WEBCAM_AND_MIC',
+  NETWORKSPEED: 'NETWORKSPEED',
+  AGREEMENT: 'AGREEMENT',
+  MEET: 'MEET',
+};
+
 export const STT_LANGUAGE_LIST = [{ label: 'Turkish', value: 'tr', key: 'tr' }];
