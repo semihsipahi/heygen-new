@@ -1,4 +1,4 @@
-import ApiService from '../lib/http/axiosHelper';
+import ApiService from '../lib/http/AxiosHelper';
 
 const api = new ApiService('Meet');
 

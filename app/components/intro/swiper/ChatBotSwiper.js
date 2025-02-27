@@ -1,28 +1,19 @@
-// ** React Imports
-import { useState } from 'react';
-
-// ** MUI Imports
 import { Avatar, Card, CardContent, Grid, Typography } from '@mui/material';
 import Badge from '@mui/material/Badge';
 import Box from '@mui/material/Box';
-
-// ** Icon Imports
-import Icon from 'src/@core/components/icon';
-
-// ** Third Party Components
 import { useKeenSlider } from 'keen-slider/react';
-import KeenSliderWrapper from 'src/@core/styles/libs/keen-slider';
+import { useState } from 'react';
+import IconifyIcon from './Iconify';
+import KeenSliderWrapper from './KeenSliderWrapper';
 
 const ChatbotSwiper = ({ onSlideChange }) => {
-  // ** States
-  const [loaded, setLoaded] = useState < boolean > false;
-  const [currentSlide, setCurrentSlide] = useState < number > 0;
   const direction = undefined;
-  // ** Hook
-  const [sliderRef, instanceRef] =
-    useKeenSlider <
-    HTMLDivElement >
-    ({
+
+  const [loaded, setLoaded] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(false);
+
+  const [sliderRef, instanceRef] = useKeenSlider(
+    {
       rtl: direction === 'rtl',
       loop: true,
       slides: {
@@ -75,7 +66,8 @@ const ChatbotSwiper = ({ onSlideChange }) => {
           clearNextTimeout();
         });
       },
-    ]);
+    ]
+  );
 
   return (
     <KeenSliderWrapper
@@ -121,7 +113,11 @@ const ChatbotSwiper = ({ onSlideChange }) => {
                   </Typography>
                 </Grid>
                 <Grid item xs={2}>
-                  <Icon icon="oui:quote" fontSize="3rem" color="lightgrey" />
+                  <IconifyIcon
+                    icon="oui:quote"
+                    fontSize="3rem"
+                    color="lightgrey"
+                  />
                 </Grid>
               </Grid>
             </CardContent>

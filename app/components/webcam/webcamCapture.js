@@ -1,7 +1,7 @@
 'use client';
 
-import { generateGUID } from '@/app/lib/utils/pureGuid';
-import { uploadVideo } from '@/app/service/commonService';
+import { generateGUID } from '@/app/lib/utils/PureGuid';
+import { uploadVideo } from '@/app/service/CommonService';
 import { useEffect, useRef, useState } from 'react';
 
 export default function WebcamCapture(props) {
@@ -10,7 +10,6 @@ export default function WebcamCapture(props) {
   const mediaRecorderRef = useRef(null);
 
   const [recording, setRecording] = useState(false);
-  const [videoBlob, setVideoBlob] = useState(null);
 
   useEffect(() => {
     if (videoRef.current && !recording) {
@@ -51,7 +50,6 @@ export default function WebcamCapture(props) {
 
     mediaRecorder.onstop = async () => {
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-      setVideoBlob(blob);
       chunksRef.current = [];
       await uploadVideoInChunks(blob);
     };
@@ -69,7 +67,6 @@ export default function WebcamCapture(props) {
         videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
       }
     }
-    console.log('BLOB: ', videoBlob);
   };
 
   const uploadChunkWithRetry = async (
@@ -78,10 +75,7 @@ export default function WebcamCapture(props) {
     maxAttempts = 3
   ) => {
     try {
-      const response = await uploadVideo(payload);
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
+      await uploadVideo(payload);
     } catch (error) {
       if (attempt < maxAttempts) {
         console.warn(`Retrying chunk upload... Attempt ${attempt + 1}`);
@@ -92,56 +86,13 @@ export default function WebcamCapture(props) {
     }
   };
 
-  // const uploadVideoInChunks = async (blob) => {
-  //   let start = 0;
-
-  //   console.log('Upload Video In Chunks', blob);
-
-  //   const totalSize = blob.size;
-  //   const chunkSize = 1024 * 1024 * 4; // 500 KB
-
-  //   let chunkIndex = 0;
-
-  //   const mimeType = blob.type;
-  //   const trackId = generateGUID();
-  //   const fileExtension = mimeType.split('/')[1];
-
-  //   const seperate = totalSize / chunkSize;
-
-  //   console.log('Upload Video In Chunks Total Size :', seperate);
-
-  //   while (start < chunkSize) {
-  //     const chunk = blob.slice(start, start + chunkSize);
-  //     const reader = new FileReader();
-
-  //     reader.readAsArrayBuffer(chunk);
-
-  //     await new Promise((resolve) => {
-  //       reader.onloadend = async () => {
-  //         const payload = {
-  //           trackId,
-  //           fileExtension,
-  //           currentChunk: chunkIndex + 1,
-  //           bytes: Array.from(new Uint8Array(reader.result)),
-  //           totalChunk: seperate,
-  //           questionId: props.question?.id,
-  //         };
-  //         await uploadChunkWithRetry(payload);
-  //         resolve();
-  //       };
-  //     });
-  //     start += chunkSize;
-  //     chunkIndex++;
-  //   }
-  // };
-
   const uploadVideoInChunks = async (blob) => {
     let start = 0;
     let chunkIndex = 0;
 
+    const mimeType = blob.type;
     const chunkSize = 1024 * 1024 * 4;
     const totalSize = blob.size;
-    const mimeType = blob.type;
     const fileExtension = mimeType.split('/')[1];
     const trackId = generateGUID();
     const seperate = Math.ceil(totalSize / chunkSize);

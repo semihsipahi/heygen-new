@@ -12,16 +12,15 @@ body {
 /* Ana kapsayıcı: İki sütunlu yapı */
 .container {
   display: flex;
-  width: 1200px; /* Görsel boyutuna göre ayarlanmış sabit genişlik */
   margin: 0 auto; /* Ortalamak için */
-  min-height: 700px; /* Yükseklik örneği */
+  min-height: 950px; /* Yükseklik örneği */
   border: 1px solid #ddd;
 }
 
 /* SOL SÜTUN */
 .left-column {
   width: 50%;
-  padding: 40px;
+  padding: 10px;
   background-color: #f9f9f9;
   display: flex;
   flex-direction: column;

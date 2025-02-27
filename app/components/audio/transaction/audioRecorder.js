@@ -1,16 +1,11 @@
-import { runSoundFilter } from '@/app/lib/utils/pureSound';
-import { useEffect, useRef, useState } from 'react';
-import WithIconMicrophone from '../mic/withIconMicrophone';
+import { useRef, useState } from 'react';
+import WithIconMicrophone from '../mic/WithIconMicrophone';
 
 const AudioRecorder = (props) => {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
   const [isRecording, setIsRecording] = useState(false);
-
-  useEffect(() => {
-    runSoundFilter();
-  }, []);
 
   const handleTranscribeResult = async (audioBlob) => {
     const formData = new FormData();
