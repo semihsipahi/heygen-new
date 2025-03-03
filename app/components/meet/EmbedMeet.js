@@ -48,7 +48,7 @@ export default function EmbedMeet() {
   const [startVideoRecord, setStartVideoRecord] = useState(false);
   const [stopVideoRecord, setStopVideoRecord] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.MEET);
+  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.INITIALIZE);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -72,7 +72,9 @@ export default function EmbedMeet() {
       }
     };
 
-    initializeData();
+    (async () => {
+      await initializeData();
+    })();
   }, []);
 
   useEffect(() => {
@@ -83,6 +85,11 @@ export default function EmbedMeet() {
       };
     }
   }, [stream]);
+
+  useEffect(() => {
+    if (meeting === null) return;
+    // startSession();
+  }, [meeting]);
 
   const updateMicButton = (text, disabled, bgColor, cursor) => {
     const btn = micRef.current;
@@ -124,7 +131,7 @@ export default function EmbedMeet() {
         voice: {
           rate: 0.9, // 0.5 ~ 1.5 arası değer
           emotion: VoiceEmotion.EXCITED,
-          speed: 0.6,
+          speed: 0.3,
         },
         language: 'tr',
         disableIdleTimeout: true,
@@ -240,10 +247,11 @@ export default function EmbedMeet() {
       await createMeetingRecord(payload);
 
       const tempAnswers = [
-        'Soruya verdiğiniz cevabı algıladım, teşekkürler, bir sonraki soruya geçiyorum.',
-        'Bu soruya verdiğiniz cevap için teşekkürler, bu cevabı kayıt ediyor ve bir sonraki soruya geçiyorum.',
-        'Bu cevabı sevdim, teşekkürler, bir sonraki soruya geçiyorum.',
+        'Soruya verdiğiniz cevabı algıladım, teşekkürler, sorularınızı güncelliyorum.',
+        'Bu soruya verdiğiniz cevap için teşekkürler, bu cevabı kayıt ediyor ve sorularınızı güncelliyorum.',
+        'Bu cevabı sevdim, teşekkürler, sorularınızı güncelliyorum.',
       ];
+
       const randomAnswer =
         tempAnswers[Math.floor(Math.random() * tempAnswers.length)];
 
@@ -303,7 +311,7 @@ export default function EmbedMeet() {
     <>
       {introStep === EMBED_INTRO_STEPS.INITIALIZE && (
         <div className="container">
-          {/* Sol Sütun */}
+          {/* LEFT SIDE */}
           <div className="left-column">
             <Box
               sx={{
@@ -361,7 +369,7 @@ export default function EmbedMeet() {
             </Box>
           </div>
 
-          {/* Sağ Sütun */}
+          {/* RIGHT SIDE */}
           <div className="right-column">
             <h2>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h2>
             <div className="steps">
