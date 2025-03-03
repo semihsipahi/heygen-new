@@ -35,3 +35,7 @@ export const EMBED_INTRO_STEPS = {
 };
 
 export const STT_LANGUAGE_LIST = [{ label: 'Turkish', value: 'tr', key: 'tr' }];
+
+export const MEETING_STATUS = {
+  ANALYSE_COMPLETED: 'Analiz Tamamlandı',
+};

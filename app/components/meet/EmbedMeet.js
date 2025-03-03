@@ -48,7 +48,7 @@ export default function EmbedMeet() {
   const [startVideoRecord, setStartVideoRecord] = useState(false);
   const [stopVideoRecord, setStopVideoRecord] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.INITIALIZE);
+  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.MEET);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -88,7 +88,7 @@ export default function EmbedMeet() {
 
   useEffect(() => {
     if (meeting === null) return;
-    // startSession();
+    //startSession();
   }, [meeting]);
 
   const updateMicButton = (text, disabled, bgColor, cursor) => {
