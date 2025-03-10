@@ -1,6 +1,8 @@
 'use client';
 
-import { completeMeetingInvintation } from '@/app/service/MeetingInvintationService';
+import { fetchToken } from '@/app/service/HeygenService';
+import { fetchMeetingQuestionByMeetingInvintationId } from '@/app/service/MeetingQuestionService';
+import { fetchMeetingByMeetingInvintationId } from '@/app/service/MeetingService';
 import StreamingAvatar, {
   AvatarQuality,
   StreamingEvents,
@@ -8,21 +10,22 @@ import StreamingAvatar, {
   TaskType,
   VoiceEmotion,
 } from '@heygen/streaming-avatar';
-import { Box } from '@mui/material';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from '@mui/material';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 import 'react-toastify/dist/ReactToastify.css';
-import ChatbotSwiper from '../../components/intro/swiper/ChatBotSwiper';
-import { EMBED_INTRO_STEPS, READY_STATE } from '../../lib/Constants';
+import { EMBED_INTRO_STEPS } from '../../lib/Constants';
 import { DifyFlows } from '../../lib/dify/DifyClient';
-import { extractTagContent } from '../../lib/utils/PureString';
-import { showToast } from '../../lib/utils/PureToast';
-import { fetchToken } from '../../service/HeygenService';
-import { createLog } from '../../service/MeetingLogService';
-import { fetchMeetingQuestionByMeetingInvintationId } from '../../service/MeetingQuestionService';
-import { createMeetingRecord } from '../../service/MeetingRecordService';
-import { fetchMeetingByMeetingInvintationId } from '../../service/MeetingService';
+import LeftSide from '../intro/leftSide/leftSide';
+import AIAssistantStepper from '../intro/stepper/AIAssistantStepper';
+
+const MUI_STEPS = ['Kamera & Mikrofon Testi', 'Hız Testi', 'Onay', 'Hazırlık'];
 
 const WebcamCapture = dynamic(
   () => import('../../components/webcam/WebcamCapture'),
@@ -34,6 +37,7 @@ const AudioRecorder = dynamic(
   { ssr: false }
 );
 
+// Dify
 const difyInstance = new DifyFlows('/api/dify/');
 
 export default function EmbedMeet() {
@@ -41,6 +45,7 @@ export default function EmbedMeet() {
   const micRef = useRef(null);
   const mediaStream = useRef(null);
 
+  // State
   const [meeting, setMeeting] = useState(null);
   const [step, setStep] = useState(0);
   const [stream, setStream] = useState(null);
@@ -49,7 +54,12 @@ export default function EmbedMeet() {
   const [startVideoRecord, setStartVideoRecord] = useState(false);
   const [stopVideoRecord, setStopVideoRecord] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
-  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.MEET);
+  const [introStep, setIntroStep] = useState(EMBED_INTRO_STEPS.INITIALIZE);
+  const [activeStep, setActiveStep] = useState(0);
+  const [openAydinlatma, setOpenAydinlatma] = useState(false);
+  const [openRiza, setOpenRiza] = useState(false);
+  const [checkedAydinlatma, setCheckedAydinlatma] = useState(false);
+  const [checkedRiza, setCheckedRiza] = useState(false);
 
   useEffect(() => {
     const initializeData = async () => {
@@ -89,8 +99,10 @@ export default function EmbedMeet() {
 
   useEffect(() => {
     if (meeting === null) return;
-    //startSession();
-  }, [meeting]);
+    if (introStep === EMBED_INTRO_STEPS.TOAST_SCREEN) {
+      // startSession();
+    }
+  }, [introStep]);
 
   const updateMicButton = (text, disabled, bgColor, cursor) => {
     const btn = micRef.current;
@@ -307,103 +319,76 @@ export default function EmbedMeet() {
     setStep((prevStep) => prevStep + 1);
   };
 
+  const handleOpenAydinlatma = (event) => {
+    event.preventDefault();
+    setOpenAydinlatma(true);
+  };
+
+  const handleCloseAydinlatma = () => {
+    setOpenAydinlatma(false);
+  };
+
+  const handleOpenRiza = (event) => {
+    event.preventDefault();
+    setOpenRiza(true);
+  };
+
+  const handleCloseRiza = () => {
+    setOpenRiza(false);
+  };
+
+  const handleMUIStepNext = () => {
+    if (activeStep < MUI_STEPS.length - 1) {
+      setActiveStep((prev) => prev + 1);
+    }
+  };
+
+  const handleCameraMicrophoneConfirm = () => {
+    handleMUIStepNext();
+    setIntroStep(EMBED_INTRO_STEPS.NETWORKSPEED);
+  };
+
+  const handleSpeedTestConfirm = () => {
+    handleMUIStepNext();
+    setIntroStep(EMBED_INTRO_STEPS.AGREEMENT);
+  };
+
+  const handleAgreementConfirm = () => {
+    handleMUIStepNext();
+    setIntroStep(EMBED_INTRO_STEPS.WEBCAM_AND_MIC);
+  };
+
+  const handleGoLastStep = () => {
+    handleMUIStepNext();
+    setIntroStep(EMBED_INTRO_STEPS.TOAST_SCREEN);
+    setTimeout(() => {
+      setIntroStep(EMBED_INTRO_STEPS.MEET);
+    }, 5000);
+  };
+
   return (
     <>
+      {/* ADIMLAR */}
       {introStep === EMBED_INTRO_STEPS.INITIALIZE && (
         <div className="container">
-          {/* LEFT SIDE */}
-          <div className="left-column">
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                width: '100%',
-                height: '100%',
-                backgroundImage: `url(/images/avatars/swiper/swiper_background_${slideIndex}.jpg)`,
-                backgroundSize: 'cover',
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                alignItems: 'flex-end',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Box sx={{ display: 'flex', width: 72, height: 36 }}>
-                <Image
-                  src="/small/topRight.png"
-                  width={36}
-                  height={36}
-                  alt=""
-                />
-                <Box sx={{ width: 36, height: 36, backgroundColor: 'white' }} />
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  flex: 1,
-                  flexDirection: 'row',
-                  width: '100%',
-                  position: 'relative',
-                }}
-              >
-                <Box
-                  sx={{
-                    flex: 1,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                  }}
-                >
-                  <ChatbotSwiper onSlideChange={setSlideIndex} />
-                </Box>
-                <Box sx={{ width: 36, backgroundColor: 'white' }} />
-              </Box>
-              <Box
-                sx={{
-                  display: 'flex',
-                  width: 36,
-                  height: 36,
-                  backgroundImage: 'url(/small/rightBottom.png)',
-                }}
-              />
-            </Box>
-          </div>
-
-          {/* RIGHT SIDE */}
+          <LeftSide slideIndex={slideIndex} setSlideIndex={setSlideIndex} />
           <div className="right-column">
-            <h2>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h2>
-            <div className="steps">
-              <div className="step active">Görüntü & Ses</div>
-              <div className="step">İzinler</div>
-              <div className="step">İsim</div>
-              <div className="step">Özet</div>
-            </div>
+            <h3>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h3>
 
+            <AIAssistantStepper
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              steps={MUI_STEPS}
+            />
             <div className="test-section-title">Kamera & Mikrofon Testi</div>
-
-            <div className="form-group">
-              <label htmlFor="micSelect">Ses Kayıt Cihazı</label>
-              <select id="micSelect">
-                <option>Default - Mikrofon (Realtek(R))</option>
-                <option>Mikrofon 1</option>
-                <option>Mikrofon 2</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="camSelect">Görüntü Kayıt Cihazı</label>
-              <select id="camSelect">
-                <option>USB webcam (0408:2094)</option>
-                <option>Kamera 1</option>
-                <option>Kamera 2</option>
-              </select>
-            </div>
-
             <div
               style={{
-                display: 'flex',
+                display: 'block',
                 justifyContent: 'center',
                 marginTop: 10,
+                marginBottom: 20,
+                backgroundColor: '#f0f0f0',
+                width: '100%',
               }}
             >
               <WebcamCapture
@@ -412,10 +397,203 @@ export default function EmbedMeet() {
                 startRecording={startVideoRecord}
               />
             </div>
+            <div className="form-container">
+              <div className="form-group">
+                <label htmlFor="micSelect">Ses Kayıt Cihazı</label>
+                <select id="micSelect">
+                  <option>Default - Mikrofon (Realtek(R))</option>
+                  <option>Mikrofon 1</option>
+                  <option>Mikrofon 2</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label htmlFor="camSelect">Görüntü Kayıt Cihazı</label>
+                <select id="camSelect">
+                  <option>USB webcam (0408:2094)</option>
+                  <option>Kamera 1</option>
+                  <option>Kamera 2</option>
+                </select>
+              </div>
+              <button
+                className="confirm-button"
+                onClick={handleCameraMicrophoneConfirm}
+              >
+                Sesiniz ve görüntünüz algılandı, devam edebilirsiniz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <button className="confirm-button">
-              Sesinizi ve görüntünüzü onayladı, devam edebilirsiniz
-            </button>
+      {introStep === EMBED_INTRO_STEPS.NETWORKSPEED && (
+        <div className="container">
+          <LeftSide slideIndex={slideIndex} setSlideIndex={setSlideIndex} />
+          <div className="right-column">
+            <AIAssistantStepper
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              steps={MUI_STEPS}
+            />
+            <div className="test-section-title">Hız Testi</div>
+            <div
+              style={{
+                display: 'block',
+                justifyContent: 'center',
+                marginTop: 10,
+                marginBottom: 20,
+                width: '100%',
+              }}
+            >
+              <div className="speed-container">
+                <div className="speed-group">
+                  <p className="speed-label">Download</p>
+                  <p className="speed-value">-- Mbps</p>
+                </div>
+                <div className="speed-group">
+                  <p className="speed-label">Upload</p>
+                  <p className="speed-value">-- Mbps</p>
+                </div>
+              </div>
+              <button
+                className="confirm-button"
+                onClick={handleSpeedTestConfirm}
+              >
+                Hız testini başlat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {introStep === EMBED_INTRO_STEPS.AGREEMENT && (
+        <div className="container">
+          <LeftSide slideIndex={slideIndex} setSlideIndex={setSlideIndex} />
+          <div className="right-column">
+            <h3>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h3>
+            <AIAssistantStepper
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              steps={MUI_STEPS}
+            />
+            <div
+              style={{
+                display: 'block',
+                justifyContent: 'center',
+                marginTop: 10,
+                marginBottom: 20,
+                width: '100%',
+              }}
+            >
+              <div className="checkbox-container">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={checkedAydinlatma}
+                    onChange={(e) => setCheckedAydinlatma(e.target.checked)}
+                  />
+                  <span>
+                    <a
+                      href="#"
+                      onClick={handleOpenAydinlatma}
+                      className="blue-text"
+                    >
+                      Aydınlatma Metni
+                    </a>
+                    'ni okudum, kabul ediyorum.
+                  </span>
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={checkedRiza}
+                    onChange={(e) => setCheckedRiza(e.target.checked)}
+                  />
+                  <span>
+                    <a href="#" onClick={handleOpenRiza} className="blue-text">
+                      Açık Rıza Metni
+                    </a>
+                    'ni okudum, kabul ediyorum.
+                  </span>
+                </label>
+              </div>
+              <button
+                className="confirm-button"
+                onClick={handleAgreementConfirm}
+                disabled={!(checkedAydinlatma && checkedRiza)}
+                style={{
+                  backgroundColor: !(checkedAydinlatma && checkedRiza)
+                    ? 'grey'
+                    : '#1976d2',
+                  color: 'white',
+                  cursor: !(checkedAydinlatma && checkedRiza)
+                    ? 'not-allowed'
+                    : 'pointer',
+                }}
+              >
+                KVKK ve Gizlilik onaylarınız kontrol ediliyor.
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {introStep === EMBED_INTRO_STEPS.WEBCAM_AND_MIC && (
+        <div className="container">
+          <LeftSide slideIndex={slideIndex} setSlideIndex={setSlideIndex} />
+          <div className="right-column">
+            <h3>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h3>
+            <AIAssistantStepper
+              activeStep={activeStep}
+              setActiveStep={setActiveStep}
+              steps={MUI_STEPS}
+            />
+            <div
+              style={{
+                display: 'block',
+                justifyContent: 'center',
+                marginTop: 10,
+                marginBottom: 20,
+                width: '100%',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'start',
+                  gap: '1rem',
+                }}
+              >
+                <div className="mic-text">
+                  Görüşmede Mikrofon Kullanımı Hakkında Bilgilendirme
+                </div>
+                <img
+                  src="/images/how-to-use/video.png"
+                  alt="video link"
+                  className="mic-image"
+                />
+              </div>
+              <button className="confirm-button" onClick={handleGoLastStep}>
+                Devam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {introStep === EMBED_INTRO_STEPS.TOAST_SCREEN && (
+        <div className="container">
+          <LeftSide slideIndex={slideIndex} setSlideIndex={setSlideIndex} />
+          <div className="right-column">
+            <h3>Yapay zeka asistanımız görüşme yapmak için sizi bekliyor!</h3>
+            <AIAssistantStepper
+              activeStep={MUI_STEPS.length}
+              setActiveStep={setActiveStep}
+              steps={MUI_STEPS}
+            />
+            <div style={{ marginTop: '1rem' }}>
+              <p>Görüşme başlamak üzere, lütfen bekleyiniz...</p>
+            </div>
           </div>
         </div>
       )}
@@ -474,6 +652,37 @@ export default function EmbedMeet() {
           )}
         </div>
       )}
+
+      <Dialog
+        open={openAydinlatma}
+        onClose={handleCloseAydinlatma}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Aydınlatma Metni</DialogTitle>
+        <DialogContent dividers>
+          <p>
+            Burada Aydınlatma Metni içeriği yer alır. İstediğiniz metni
+            ekleyebilirsiniz.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseAydinlatma}>Kapat</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openRiza} onClose={handleCloseRiza} fullWidth maxWidth="sm">
+        <DialogTitle>Açık Rıza Metni</DialogTitle>
+        <DialogContent dividers>
+          <p>
+            Burada Açık Rıza Metni içeriği yer alır. İstediğiniz içeriği
+            ekleyebilirsiniz.
+          </p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseRiza}>Kapat</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
