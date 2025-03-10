@@ -8,6 +8,7 @@ class ApiService {
       Meet: process.env.NEXT_PUBLIC_API_MEET,
       Report: process.env.NEXT_PUBLIC_API_REPORT,
       User: process.env.NEXT_PUBLIC_API_USER,
+      MeetingInvintation: process.env.NEXT_PUBLIC_API_MEET_INVINTATION,
     };
 
     if (!baseURLs[namespace]) {

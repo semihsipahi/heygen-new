@@ -1,5 +1,6 @@
 'use client';
 
+import { completeMeetingInvintation } from '@/app/service/MeetingInvintationService';
 import StreamingAvatar, {
   AvatarQuality,
   StreamingEvents,
@@ -215,15 +216,12 @@ export default function EmbedMeet() {
     });
 
     const summaryResponse = await difyInstance.answerSummary({
-      answer: filteredData,
+      answer: filteredData?.text,
     });
 
     if (!summaryResponse) return;
 
-    const summaryText = extractTagContent(
-      summaryResponse?.data?.outputs?.text,
-      'summary'
-    );
+    const summaryText = summaryResponse?.data?.outputs?.text;
 
     const summarySpeak = await avatar.current.speak({
       text: summaryText,
@@ -249,7 +247,7 @@ export default function EmbedMeet() {
       const tempAnswers = [
         'Soruya verdiğiniz cevabı algıladım, teşekkürler, sorularınızı güncelliyorum.',
         'Bu soruya verdiğiniz cevap için teşekkürler, bu cevabı kayıt ediyor ve sorularınızı güncelliyorum.',
-        'Bu cevabı sevdim, teşekkürler, sorularınızı güncelliyorum.',
+        'Cevabınızı kayıt ettim, teşekkürler, sorularınızı güncelliyorum.',
       ];
 
       const randomAnswer =
@@ -283,6 +281,8 @@ export default function EmbedMeet() {
         taskType: TaskType.REPEAT,
         taskMode: TaskMode.SYNC,
       });
+
+      await completeMeetingInvintation();
 
       setTimeout(() => {
         endSession();

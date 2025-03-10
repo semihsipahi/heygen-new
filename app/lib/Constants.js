@@ -38,4 +38,8 @@ export const STT_LANGUAGE_LIST = [{ label: 'Turkish', value: 'tr', key: 'tr' }];
 
 export const MEETING_STATUS = {
   ANALYSE_COMPLETED: 'Analiz Tamamlandı',
+  MEETING_COMPLETED: 'Görüşme Tamamlandı',
+  MEETING: 'Görüşme Devam Ediyor',
+  SEND_INVITED: 'Davet Gönderildi',
+  ANALYSING: 'Analiz Ediliyor',
 };

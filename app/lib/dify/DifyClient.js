@@ -30,7 +30,7 @@ export class DifyFlows {
     return this.callFlow('candidate_preparation', payload);
   }
 
-  async answerSummary(payload) {
-    return this.callFlow('answer_summary', payload);
+  async answerSummary(params) {
+    return this.callFlow('answer_summary', params);
   }
 }
