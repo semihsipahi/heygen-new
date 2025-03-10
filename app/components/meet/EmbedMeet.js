@@ -1,7 +1,12 @@
 'use client';
 
+import { extractTagContent } from '@/app/lib/utils/PureString';
+import { showToast } from '@/app/lib/utils/PureToast';
 import { fetchToken } from '@/app/service/HeygenService';
+import { completeMeetingInvintation } from '@/app/service/MeetingInvintationService';
+import { createLog } from '@/app/service/MeetingLogService';
 import { fetchMeetingQuestionByMeetingInvintationId } from '@/app/service/MeetingQuestionService';
+import { createMeetingRecord } from '@/app/service/MeetingRecordService';
 import { fetchMeetingByMeetingInvintationId } from '@/app/service/MeetingService';
 import StreamingAvatar, {
   AvatarQuality,
@@ -20,7 +25,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useEffect, useRef, useState } from 'react';
 import 'react-toastify/dist/ReactToastify.css';
-import { EMBED_INTRO_STEPS } from '../../lib/Constants';
+import { EMBED_INTRO_STEPS, READY_STATE } from '../../lib/Constants';
 import { DifyFlows } from '../../lib/dify/DifyClient';
 import LeftSide from '../intro/leftSide/leftSide';
 import AIAssistantStepper from '../intro/stepper/AIAssistantStepper';
@@ -100,7 +105,7 @@ export default function EmbedMeet() {
   useEffect(() => {
     if (meeting === null) return;
     if (introStep === EMBED_INTRO_STEPS.TOAST_SCREEN) {
-      // startSession();
+      startSession();
     }
   }, [introStep]);
 
@@ -143,8 +148,8 @@ export default function EmbedMeet() {
         knowledgeId: '',
         voice: {
           rate: 0.9, // 0.5 ~ 1.5 arası değer
-          emotion: VoiceEmotion.EXCITED,
-          speed: 0.3,
+          emotion: VoiceEmotion.SERIOUS,
+          speed: 0.1,
         },
         language: 'tr',
         disableIdleTimeout: true,
@@ -184,8 +189,8 @@ export default function EmbedMeet() {
     // Candidate Preparation Case.
     if (step === 0) {
       const response = await difyInstance.candidatePreparation({
-        user_input: filteredData,
-        user_information: 'Semih Sipahi',
+        user_input: filteredData.text,
+        user_information: 'Meetgate Test Kullanıcısı',
       });
 
       const readyState = extractTagContent(
@@ -363,7 +368,7 @@ export default function EmbedMeet() {
     setIntroStep(EMBED_INTRO_STEPS.TOAST_SCREEN);
     setTimeout(() => {
       setIntroStep(EMBED_INTRO_STEPS.MEET);
-    }, 5000);
+    }, 4000);
   };
 
   return (
